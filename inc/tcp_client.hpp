@@ -1,11 +1,10 @@
 #include <iostream>
 #include "asio.hpp"
+#include "tcp_connection.hpp"
 #include <vector>
 
-class TcpClient {
+class TcpClient : TcpObject{
     public:
-        TcpClient() : m_isConnected(false) {}
-
         void connect(const int& port, const std::string& name);
         void disconnect();
         void publish(const std::string& topic, const std::string& data);
@@ -14,12 +13,19 @@ class TcpClient {
         bool isConnectedStatus() const {
             return m_isConnected;
         };
+        void onRead(int connId, std::string payload) override;
+        void onClose(int connId) override;
+        void onStart(int connId) override;
 
+        TcpClient(asio::io_context &ioContext);
     private:
         bool m_isConnected;
         int m_serverPort;
         std::string m_clientName;
         std::vector<std::string> m_topics;
+
+        std::shared_ptr<TcpConnection> m_connection;
+        asio::io_context &m_ioContext;
 };
 
 class ClientCommandHandler {
@@ -47,7 +53,7 @@ class ClientCommandHandler {
                 handleUnsubscribe(stream);
             }
             else {
-                std::cout << "Invalid command: " << command << std::endl;
+                std::cout << "Invalid command: " << input << std::endl;
             }
         }
     
@@ -79,6 +85,8 @@ class ClientCommandHandler {
             std::string topic, data;
             stream >> topic;
             std::getline(stream, data);
+            data.erase(0, 1);
+            
             if (topic.empty() || data.empty()) {
                 std::cout << "Error: PUBLISH command requires <topic> and <data> parameters.\n";
             } else {
