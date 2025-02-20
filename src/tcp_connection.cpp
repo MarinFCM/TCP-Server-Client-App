@@ -9,13 +9,9 @@ void TcpConnection::read(){
     m_socket.async_read_some(buffers, [this, self](const auto &error,
                                                     auto bytesTransferred) {
         if (error) {
-            if(error.value() != 2){
-                std::cerr << "TcpConnection::doRead() error: " << error.value() << " "<< error.message() <<".\n";
-            }
             return close();
         }
         m_readBuffer.commit(bytesTransferred);
-        //std::cout << "Received message: " << std::string(static_cast<const char *>(m_readBuffer.data().data()), bytesTransferred) << std::endl;
         m_object.onRead(m_connectionId,
             std::string(static_cast<const char *>(m_readBuffer.data().data()), bytesTransferred));
         m_readBuffer.consume(bytesTransferred);
@@ -39,11 +35,10 @@ void TcpConnection::send(const char *data, size_t size) {
 void TcpConnection::doWrite() {
     m_isWritting = true;
     auto self = shared_from_this();
-    asio::error_code error;
+    boost::system::error_code error;
     auto bytesTransferred = m_socket.write_some(m_writeBuffer.data(), error);
       if (error) {
         std::cerr << "TcpConnection::doWrite() error: " + error.message() + ".\n";
-        close();
         return;
       }
       m_writeBuffer.consume(bytesTransferred);
@@ -55,13 +50,14 @@ void TcpConnection::doWrite() {
   }
 
 void TcpConnection::close(){
-    try {
-        m_socket.cancel();
-        m_socket.close();
-    } catch (const std::exception &e) {
-        std::cerr << "TcpConnection::close() exception: " +
-                        static_cast<std::string>(e.what()) + ".\n";
-        return;
+    if(m_socket.is_open()){
+        try {
+            m_socket.close();
+        } catch (const std::exception &e) {
+            std::cerr << "TcpConnection::close() exception: " +
+                            static_cast<std::string>(e.what()) + ".\n";
+            return;
+        }
     }
     m_object.onClose(m_connectionId);
 }

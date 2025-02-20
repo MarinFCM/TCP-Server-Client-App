@@ -4,9 +4,9 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include "asio.hpp"
+#include <boost/asio.hpp>
 
-using asio::ip::tcp;
+using boost::asio::ip::tcp;
 
 class TcpObject
 {
@@ -31,8 +31,8 @@ private:
     TcpConnection(tcp::socket &&socket, TcpObject &object, int connId);
     TcpObject &m_object;
     tcp::socket m_socket;
-    asio::streambuf m_readBuffer;
-    asio::streambuf m_writeBuffer;
+    boost::asio::streambuf m_readBuffer;
+    boost::asio::streambuf m_writeBuffer;
     std::mutex m_writeBufferMutex;
     int m_connectionId;
     bool m_isWritting;

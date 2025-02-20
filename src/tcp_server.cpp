@@ -1,7 +1,7 @@
 #include "tcp_server.hpp"
 #include <algorithm>
 
-TcpServer::TcpServer(int port, asio::io_context& io_context) : 
+TcpServer::TcpServer(int port, boost::asio::io_context& io_context) : 
     m_ioContext(io_context),
     m_acceptor(io_context, tcp::endpoint(tcp::v4(), port)),
     m_serverPort(port),
@@ -77,10 +77,7 @@ void TcpServer::handleConnect(std::istringstream& stream, int connId){
 }
 
 void TcpServer::handleDisconnect(int connId){
-    m_clientTopics.erase(connId);
-    m_clientNames.erase(connId);
     m_clientConnections[connId]->close();
-    m_clientConnections.erase(connId);
 }
 
 void TcpServer::handlePublish(std::istringstream& stream, int connId){
@@ -101,7 +98,6 @@ void TcpServer::handlePublish(std::istringstream& stream, int connId){
             }
         }
         for(auto it : topicSubscribers){
-            //std::cout << "Sending to subscriber(id="<<it<<").\n";
             std::string sendData(topic+";"+data);
             m_clientConnections[it]->send(sendData.c_str(), sendData.size());
         }
@@ -114,7 +110,6 @@ void TcpServer::handleSubscribe(std::istringstream& stream, int connId){
         std::cout << "Error: Invalid format SUBSCRIBE received.\n";
     } else {
         m_clientTopics[connId].push_back(topic);
-        //std::cout << "Client (id="<<connId<<") subscribed to topic: " << topic << std::endl;
     }
 }
 void TcpServer::handleUnsubscribe(std::istringstream& stream, int connId){
@@ -127,43 +122,53 @@ void TcpServer::handleUnsubscribe(std::istringstream& stream, int connId){
         auto it = std::find(vecRef.begin(), vecRef.end(), topic);
         if(it != vecRef.end()){
             vecRef.erase(it);
-            //std::cout << "Client (id="<<connId<<") unsubscribed from topic: " << topic << std::endl;
-        }
-        else{
-            //std::cout << "Client (id="<<connId<<") was not subscribed to topic: " << topic << std::endl;
-        }        
+        }       
     }
 }
 
 
 void TcpServer::onRead(int connId, std::string data) {
-    std::cout << "Received from " << connId << ": " << data << std::endl;
     handleCommand(data, connId);
 }
 
 void TcpServer::onClose(int connId){
-    std::cout << "Connection closed to " << connId << std::endl;
-    handleDisconnect(connId);
+    if(m_clientNames.find(connId) != m_clientNames.end()){
+        std::cout << "Connection closed to client(id="<<connId<<") " << m_clientNames[connId] << std::endl;
+        m_clientTopics.erase(connId);
+        m_clientNames.erase(connId);
+        m_clientConnections.erase(connId);
+    }
 }
 
 void TcpServer::onStart(int connId){
-    std::cout << "Connection started to " << connId << std::endl;
+    std::cout << "New client(id="<<connId<<") connected" << std::endl;
+}
+
+void signal_handler(int s){
+    std::cout << std::endl << "Caught SIGINT signal" << std::endl;
+    exit(1); 
 }
 
 int main(int argc, char* argv[]){
-    if(argc < 2){
-        std::cout << "Invalid argument count" << std::endl;
+    if(argc != 2){
+        std::cout << "Program only takes one input: <server_port>" << std::endl;
         return -1;
     }
+
+    struct sigaction sigIntHandler;
+
+    sigIntHandler.sa_handler = signal_handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
     int x = atoi(argv[1]);
-    std::cout << "port number: " << x << std::endl;
-    asio::io_context context;
-    //std::thread thread{[&context]() { context.run(); }};
+    boost::asio::io_context context;
 
     TcpServer server{x, context};
     server.start();
     context.run();
 
-    //thread.join();
     return 0;
 }

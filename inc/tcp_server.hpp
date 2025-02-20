@@ -2,16 +2,14 @@
 #define TCP_SERVER_HPP
 
 #include <iostream>
-#include "asio.hpp"
 #include "tcp_connection.hpp"
-#include "command_handler.hpp"
 #include <map>
 
-using asio::ip::tcp;
+using boost::asio::ip::tcp;
 
 class TcpServer : TcpObject{
     public:
-        TcpServer(int port, asio::io_context& io_context);
+        TcpServer(int port, boost::asio::io_context& io_context);
         void onRead(int connId, std::string data) override;
         void onClose(int connId) override;
         void onStart(int connId) override;
@@ -27,7 +25,7 @@ class TcpServer : TcpObject{
         void handleSubscribe(std::istringstream& stream, int connId);
         void handleUnsubscribe(std::istringstream& stream, int connId);
 
-        asio::io_context& m_ioContext;
+        boost::asio::io_context& m_ioContext;
         tcp::acceptor m_acceptor;
 
         int m_serverPort;

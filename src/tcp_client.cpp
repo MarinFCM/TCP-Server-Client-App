@@ -12,24 +12,24 @@ std::mutex inputMutex;
 std::atomic<bool> exit_flag(false);
 std::queue<std::string> inputQueue;
 
-TcpClient::TcpClient(asio::io_context &ioContext) : m_ioContext(ioContext), m_isConnected(false), m_connection{} {}
+TcpClient::TcpClient(boost::asio::io_context &ioContext) : m_ioContext(ioContext), m_connection{}, m_isConnected{false} {}
 
 void TcpClient::connect(const int& port, const std::string& name) {
     if (!m_isConnected) {
-        auto socket = std::make_shared<asio::ip::tcp::socket>(m_ioContext);
-        asio::error_code ec;
-        socket->connect(tcp::endpoint{asio::ip::address::from_string("127.0.0.1"), port}, ec); 
+        auto socket = std::make_shared<boost::asio::ip::tcp::socket>(m_ioContext);
+        boost::system::error_code ec;
+        socket->connect(tcp::endpoint{boost::asio::ip::address::from_string("127.0.0.1"), port}, ec); 
         if (ec) {
             std::cerr << "TcpClient::connect() error: " + ec.message() + ".\n";
             onClose(0);
             return;
         }
         m_connection = TcpConnection::create(std::move(*socket), *this);
+        m_isConnected = true;
         m_connection->read();
         onStart(0);
         m_serverPort = port;
         m_clientName = name;
-        m_isConnected = true;
         std::string connectString = "CONNECT;" + name;
         m_connection->send(connectString.c_str(), connectString.size());
         std::cout << "Connected to port " << m_serverPort << " as " << m_clientName << std::endl;
@@ -40,17 +40,15 @@ void TcpClient::connect(const int& port, const std::string& name) {
 
 void TcpClient::disconnect() {
     if (m_isConnected) {
-        m_connection->close();
-        m_isConnected = false;
-        std::cout << "Disconnected from port " << m_serverPort << std::endl;
+        std::string connectString = "DISCONNECT;";
+        m_connection->send(connectString.c_str(), connectString.size());
     } else {
         std::cout << "Not connected to any server." << std::endl;
-
     }
 }
 
 void TcpClient::publish(const std::string& topic, const std::string& data) {
-    if (m_connection) {
+    if (m_isConnected) {
         std::cout << "Published to topic: " << topic << " with data: " << data << std::endl;
         std::string connectString = "PUBLISH;" + topic + ";" + data;
         m_connection->send(connectString.c_str(), connectString.size());
@@ -104,14 +102,97 @@ void TcpClient::onRead(int connId, std::string payload) {
     std::cout << "[Message] Topic: " << topic << " Data: " << data << std::endl;
 }
 
+void TcpClient::handleCommand(const std::string& input, int connid) {
+    std::istringstream stream(input);
+    std::string command;
+    stream >> command;
+
+    if (command == "CONNECT") {
+        handleConnect(stream);
+    }
+    else if (command == "DISCONNECT") {
+        handleDisconnect();
+    }
+    else if (command == "PUBLISH") {
+        handlePublish(stream);
+    }
+    else if (command == "SUBSCRIBE") {
+        handleSubscribe(stream);
+    }
+    else if (command == "UNSUBSCRIBE") {
+        handleUnsubscribe(stream);
+    }
+    else {
+        std::cout << "Invalid command: " << input << std::endl;
+    }
+}
+
+void TcpClient::handleConnect(std::istringstream& stream, int connid) {
+    std::string portStr, name;
+    stream >> portStr >> name;
+
+    if (portStr.empty() || name.empty()) {
+        std::cout << "Error: CONNECT command requires <port> (int) and <name> parameters.\n";
+        return;
+    }
+
+    int port = strtol(portStr.c_str(), nullptr, 10);
+
+    if (port < 1 || port > 65535) {
+        std::cout << "Error: Port must be an integer between 1 and 65535.\n";
+        return;
+    }
+
+    connect(port, name);
+}
+
+void TcpClient::handleDisconnect(int connid) {
+    disconnect();
+}
+
+void TcpClient::handlePublish(std::istringstream& stream, int connid) {
+    std::string topic, data;
+    stream >> topic;
+    std::getline(stream, data);
+    data.erase(0, 1);
+    
+    if (topic.empty() || data.empty()) {
+        std::cout << "Error: PUBLISH command requires <topic> and <data> parameters.\n";
+    } else {
+        publish(topic, data);
+    }
+}
+
+void TcpClient::handleSubscribe(std::istringstream& stream, int connid) {
+    std::string topic;
+    stream >> topic;
+    if (topic.empty()) {
+        std::cout << "Error: SUBSCRIBE command requires <topic> parameter.\n";
+    } else {
+        subscribe(topic);
+    }
+}
+
+void TcpClient::handleUnsubscribe(std::istringstream& stream, int connid) {
+    std::string topic;
+    stream >> topic;
+    if (topic.empty()) {
+        std::cout << "Error: UNSUBSCRIBE command requires <topic> parameter.\n";
+    } else {
+        unsubscribe(topic);
+    }
+}
+
 void TcpClient::onClose(int connId){
+    m_isConnected = false;
+    m_topics.clear();
     std::lock_guard<std::mutex> lock(outputMutex);
-    std::cout << "Connection closed to " << connId << std::endl;
+    std::cout << "Connection to server closed" << std::endl;
 }
 
 void TcpClient::onStart(int connId){
     std::lock_guard<std::mutex> lock(outputMutex);
-    std::cout << "Connection started to " << connId << std::endl;
+    std::cout << "Connection to server started" << std::endl;
 }
 
 void signal_handler(int s){
@@ -140,14 +221,12 @@ void read_input() {
 }
 
 int main() {
-    asio::io_context context;
+    boost::asio::io_context context;
 
     TcpClient client{context};
 
-    asio::executor_work_guard<asio::io_context::executor_type> work = asio::make_work_guard(context);
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work = boost::asio::make_work_guard(context);
     std::thread thread{[&context]() { context.run(); }};
-
-    ClientCommandHandler handler(client);
 
     struct sigaction sigIntHandler;
 
@@ -165,13 +244,13 @@ int main() {
             if (!inputQueue.empty()) {
                 std::string user_input = inputQueue.front();
                 inputQueue.pop();
-                if(user_input == "DISCONNECT") work.reset();
-                handler.handleCommand(user_input);
+                client.handleCommand(user_input);
             }
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    work.reset();
     input_thread.join();
     thread.join();
     return 0;

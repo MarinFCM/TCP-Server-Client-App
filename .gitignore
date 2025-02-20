@@ -1,3 +1,4 @@
 .vscode/
 tcp_client
 tcp_server
+build/
