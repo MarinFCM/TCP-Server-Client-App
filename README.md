@@ -12,6 +12,19 @@ The repository also includes unit tests using Google Test and Google Mock.
 - Clients can publish messages to topics
 - Unit tests using Google Test and Google Mock
 
+## Usage
+
+### Server application
+
+- The server application takes one parameter as input \<port> and does not have runtime commands.
+
+### Client application
+- CONNECT \<port> \<client name> - Start a connection to an arbitrary server application
+- DISCONNECT – Disconnect from the currently connected server application
+- PUBLISH \<topic name> \<data> - Send an arbitrary (ASCII) message to a specific topic
+- SUBSCRIBE \<topic name> - Subscribe to a specific topic
+- UNSUBSCRIBE \<topic name> - Unsubscribe from a specific topic
+
 ## Installation
 
 ### Prerequisites
@@ -35,6 +48,8 @@ To run the server and client using Docker, use the following commands:
 
 ```sh
 # Run the server on port 1999
+# The option "--network host" run the container on the host network. It is needed because running two (or more) "docker run" 
+# commands runs seperate docker instances which cannot communicate without exposing ports between them
 docker run -it --network host --rm tcp_app build/tcp_server 1999
 
 # Run the client
@@ -123,9 +138,10 @@ To run the unit tests, use the following command:
 ./build/test/TCP-Server-Client-Test
 ```
 
-## Contributing
+## Class Diagram
+This picture shows a class diagram of the implementation. A higher resolution version is available: [UML](doc/UML.png).
 
-Contributions are welcome! Please open an issue or submit a pull request.
+![](doc/smallUML.png "ClassDiagram")
 
 ## License
 

@@ -5,10 +5,11 @@
 #include <memory>
 #include <mutex>
 #include <boost/asio.hpp>
+#include "command_handler.hpp"
 
 using boost::asio::ip::tcp;
 
-class TcpObject
+class TcpObject : CommandHandler
 {
 public:
     virtual void onRead(int connId, std::string data) = 0;
@@ -36,7 +37,5 @@ private:
     std::mutex m_writeBufferMutex;
     int m_connectionId;
     bool m_isWritting;
-
-    std::string message_;
 };
 #endif

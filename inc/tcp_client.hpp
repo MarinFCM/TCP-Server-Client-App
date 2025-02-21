@@ -3,10 +3,9 @@
 
 #include <iostream>
 #include "tcp_connection.hpp"
-#include "command_handler.hpp"
 #include <vector>
 
-class TcpClient : TcpObject, CommandHandler {
+class TcpClient : TcpObject {
     public:
         void onRead(int connId, std::string payload) override;
         void onClose(int connId) override;

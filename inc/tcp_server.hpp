@@ -2,13 +2,12 @@
 #define TCP_SERVER_HPP
 
 #include <iostream>
-#include "command_handler.hpp"
 #include "tcp_connection.hpp"
 #include <map>
 
 using boost::asio::ip::tcp;
 
-class TcpServer : TcpObject, CommandHandler{
+class TcpServer : TcpObject{
     public:
         TcpServer(int port, boost::asio::io_context& io_context);
         void onRead(int connId, std::string data) override;
