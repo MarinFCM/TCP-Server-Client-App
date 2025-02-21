@@ -23,6 +23,7 @@ set(CLIENT_SOURCES
 
 #Creating a library so that it can be linked to the test executable
 add_library(TCP-Server SHARED
+  ${INC_DIR}/command_handler.hpp
   ${INC_DIR}/tcp_connection.hpp
   ${SRC_DIR}/tcp_connection.cpp
   ${INC_DIR}/tcp_server.hpp
@@ -31,6 +32,7 @@ add_library(TCP-Server SHARED
 
 #Creating a library so that it can be linked to the test executable
 add_library(TCP-Client SHARED
+  ${INC_DIR}/command_handler.hpp
   ${INC_DIR}/tcp_client.hpp
   ${SRC_DIR}/tcp_client.cpp
   ${INC_DIR}/tcp_connection.hpp

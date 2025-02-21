@@ -1,8 +1,12 @@
+#ifndef TCP_CLIENT_HPP
+#define TCP_CLIENT_HPP
+
 #include <iostream>
 #include "tcp_connection.hpp"
+#include "command_handler.hpp"
 #include <vector>
 
-class TcpClient : TcpObject{
+class TcpClient : TcpObject, CommandHandler {
     public:
         void onRead(int connId, std::string payload) override;
         void onClose(int connId) override;
@@ -32,3 +36,5 @@ class TcpClient : TcpObject{
         std::shared_ptr<TcpConnection> m_connection;
         boost::asio::io_context &m_ioContext;
 };
+
+#endif
