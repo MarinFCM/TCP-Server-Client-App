@@ -99,6 +99,7 @@ void TcpServer::handleDisconnect(int connId){
 }
 
 void TcpServer::handlePublish(std::istringstream& stream, int connId){
+    (void)connId;
     std::string topic, data;
     if (!std::getline(stream, topic, ';')) {
         return;
@@ -163,6 +164,7 @@ void TcpServer::onStart(int connId){
 }
 
 void signal_handler(int s){
+    (void)s;
     std::cout << std::endl << "Caught SIGINT signal" << std::endl;
     exit(1); 
 }

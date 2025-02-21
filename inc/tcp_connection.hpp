@@ -22,15 +22,15 @@ public:
     static std::shared_ptr<TcpConnection> create(tcp::socket &&socket, TcpObject &object, int connId = 0);
 
     void read();
-    void send(const std::string &message);
     void close();
-    void doWrite();
-    void send(const char *data, size_t size);
+    bool send(const char *data, size_t size);
 
 private:
     TcpConnection(tcp::socket &&socket, TcpObject &object, int connId);
-    TcpObject &m_object;
+    bool doWrite();
+
     tcp::socket m_socket;
+    TcpObject &m_object;
     boost::asio::streambuf m_readBuffer;
     boost::asio::streambuf m_writeBuffer;
     std::mutex m_writeBufferMutex;

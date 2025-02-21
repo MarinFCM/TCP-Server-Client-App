@@ -12,13 +12,16 @@ std::mutex inputMutex;
 std::atomic<bool> exit_flag(false);
 std::queue<std::string> inputQueue;
 
-TcpClient::TcpClient(boost::asio::io_context &ioContext) : m_ioContext(ioContext), m_connection{}, m_isConnected{false} {}
+TcpClient::TcpClient(boost::asio::io_context &ioContext) : 
+        m_ioContext(ioContext), 
+        m_connection{}, 
+        m_isConnected{false} {}
 
 void TcpClient::connect(const int& port, const std::string& name) {
     if (!m_isConnected) {
         auto socket = std::make_shared<boost::asio::ip::tcp::socket>(m_ioContext);
         boost::system::error_code ec;
-        socket->connect(tcp::endpoint{boost::asio::ip::address::from_string("127.0.0.1"), port}, ec); 
+        socket->connect(tcp::endpoint{boost::asio::ip::address::from_string("127.0.0.1"), static_cast<short unsigned int>(port)}, ec); 
         if (ec) {
             std::cerr << "TcpClient::connect() error: " + ec.message() + ".\n";
             onClose(0);
@@ -32,7 +35,6 @@ void TcpClient::connect(const int& port, const std::string& name) {
         m_clientName = name;
         std::string connectString = "CONNECT;" + name;
         m_connection->send(connectString.c_str(), connectString.size());
-        std::cout << "Connected to port " << m_serverPort << " as " << m_clientName << std::endl;
     } else {
         std::cout << "Already connected to " << m_serverPort << std::endl;
     }
@@ -49,9 +51,10 @@ void TcpClient::disconnect() {
 
 void TcpClient::publish(const std::string& topic, const std::string& data) {
     if (m_isConnected) {
-        std::cout << "Published to topic: " << topic << " with data: " << data << std::endl;
         std::string connectString = "PUBLISH;" + topic + ";" + data;
-        m_connection->send(connectString.c_str(), connectString.size());
+        if(m_connection->send(connectString.c_str(), connectString.size())){
+            std::cout << "Published to topic: " << topic << " Data: " << data << std::endl;
+        }
     } else {
         std::cout << "You must be connected to publish." << std::endl;
     }
@@ -62,9 +65,10 @@ void TcpClient::subscribe(const std::string& topic) {
         auto it = std::find(m_topics.begin(), m_topics.end(), topic);
         if(it == m_topics.end()){
             std::string connectString = "SUBSCRIBE;" + topic;
-            m_connection->send(connectString.c_str(), connectString.size());
-            m_topics.push_back(topic);
-            std::cout << "Subscribed to topic: " << topic << std::endl;
+            if(m_connection->send(connectString.c_str(), connectString.size())){
+                std::cout << "Subscribed to topic: " << topic << std::endl;
+                m_topics.push_back(topic);
+            }
         }
         else{
             std::cout << "Already subscribed to topic: " << topic << std::endl;
@@ -79,9 +83,10 @@ void TcpClient::unsubscribe(const std::string& topic) {
         auto it = std::find(m_topics.begin(), m_topics.end(), topic);
         if (it != m_topics.end()) {
             std::string connectString = "UNSUBSCRIBE;" + topic;
-            m_connection->send(connectString.c_str(), connectString.size());
-            m_topics.erase(it);
-            std::cout << "Unsubscribed from topic: " << topic << std::endl;
+            if(m_connection->send(connectString.c_str(), connectString.size())){
+                m_topics.erase(it);
+                std::cout << "Unsubscribed from topic: " << topic << std::endl;
+            }
         } else {
             std::cout << "Not subscribed to topic: " << topic << std::endl;
         }
@@ -91,6 +96,7 @@ void TcpClient::unsubscribe(const std::string& topic) {
 }
 
 void TcpClient::onRead(int connId, std::string payload) {
+    (void)connId;
     std::istringstream stream(payload);
     std::string topic, data;
     if (!std::getline(stream, topic, ';')) {
@@ -106,7 +112,8 @@ bool TcpClient::isConnected() const {
     return m_isConnected;
 }
 
-void TcpClient::handleCommand(const std::string& input, int connid) {
+void TcpClient::handleCommand(const std::string& input, int connId) {
+    (void)connId;
     std::istringstream stream(input);
     std::string command;
     stream >> command;
@@ -131,7 +138,8 @@ void TcpClient::handleCommand(const std::string& input, int connid) {
     }
 }
 
-void TcpClient::handleConnect(std::istringstream& stream, int connid) {
+void TcpClient::handleConnect(std::istringstream& stream, int connId) {
+    (void)connId;
     std::string portStr, name;
     stream >> portStr >> name;
 
@@ -150,11 +158,13 @@ void TcpClient::handleConnect(std::istringstream& stream, int connid) {
     connect(port, name);
 }
 
-void TcpClient::handleDisconnect(int connid) {
+void TcpClient::handleDisconnect(int connId) {
+    (void)connId;
     disconnect();
 }
 
-void TcpClient::handlePublish(std::istringstream& stream, int connid) {
+void TcpClient::handlePublish(std::istringstream& stream, int connId) {
+    (void)connId;
     std::string topic, data;
     stream >> topic;
     std::getline(stream, data);
@@ -167,7 +177,8 @@ void TcpClient::handlePublish(std::istringstream& stream, int connid) {
     }
 }
 
-void TcpClient::handleSubscribe(std::istringstream& stream, int connid) {
+void TcpClient::handleSubscribe(std::istringstream& stream, int connId) {
+    (void)connId;
     std::string topic;
     stream >> topic;
     if (topic.empty()) {
@@ -177,7 +188,8 @@ void TcpClient::handleSubscribe(std::istringstream& stream, int connid) {
     }
 }
 
-void TcpClient::handleUnsubscribe(std::istringstream& stream, int connid) {
+void TcpClient::handleUnsubscribe(std::istringstream& stream, int connId) {
+    (void)connId;
     std::string topic;
     stream >> topic;
     if (topic.empty()) {
@@ -188,6 +200,7 @@ void TcpClient::handleUnsubscribe(std::istringstream& stream, int connid) {
 }
 
 void TcpClient::onClose(int connId){
+    (void)connId;
     m_isConnected = false;
     m_topics.clear();
     std::lock_guard<std::mutex> lock(outputMutex);
@@ -195,11 +208,13 @@ void TcpClient::onClose(int connId){
 }
 
 void TcpClient::onStart(int connId){
+    (void)connId;
     std::lock_guard<std::mutex> lock(outputMutex);
     std::cout << "Connection to server started" << std::endl;
 }
 
 void signal_handler(int s){
+    (void)s;
     std::cout << std::endl << "Caught SIGINT signal" << std::endl;
     exit_flag = true;
     exit(1); 

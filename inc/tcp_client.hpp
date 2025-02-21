@@ -28,13 +28,13 @@ class TcpClient : TcpObject, CommandHandler {
         void subscribe(const std::string& topic);
         void unsubscribe(const std::string& topic);
 
+        boost::asio::io_context &m_ioContext;
+        std::shared_ptr<TcpConnection> m_connection;
+        bool m_isConnected;
+
         int m_serverPort;
         std::string m_clientName;
-        std::vector<std::string> m_topics;
-
-        bool m_isConnected;
-        std::shared_ptr<TcpConnection> m_connection;
-        boost::asio::io_context &m_ioContext;
+        std::vector<std::string> m_topics;        
 };
 
 #endif

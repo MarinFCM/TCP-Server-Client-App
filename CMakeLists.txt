@@ -21,6 +21,8 @@ set(CLIENT_SOURCES
     ${SRC_DIR}/tcp_connection.cpp
 )
 
+add_compile_options(-Wall -Wextra -Wpedantic -O2)
+
 #Creating a library so that it can be linked to the test executable
 add_library(TCP-Server SHARED
   ${INC_DIR}/command_handler.hpp

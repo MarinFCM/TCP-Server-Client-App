@@ -1,7 +1,7 @@
 #include "tcp_connection.hpp"
 
-TcpConnection::TcpConnection(tcp::socket &&socket, TcpObject &object, int connId) : m_socket(std::move(socket)), m_object(object), m_connectionId(connId), m_writeBuffer{},
-m_writeBufferMutex{}, m_isWritting{false} {}
+TcpConnection::TcpConnection(tcp::socket &&socket, TcpObject &object, int connId) : m_socket(std::move(socket)), m_object(object), m_readBuffer{}, m_writeBuffer{},
+m_writeBufferMutex{}, m_connectionId(connId), m_isWritting{false} {}
 
 void TcpConnection::read(){
     auto buffers = m_readBuffer.prepare(512);
@@ -19,34 +19,36 @@ void TcpConnection::read(){
     });
 }
 
-void TcpConnection::send(const char *data, size_t size) {
+bool TcpConnection::send(const char *data, size_t size) {
     if (m_socket.is_open()) {
         std::ostream bufferStream{&m_writeBuffer};
         bufferStream.write(data, size);
         if (!m_isWritting) {
-            doWrite();
+            return doWrite();
         }
     }
     else{
         std::cerr << "Socket is closed.\n";
+        return false;
     }
+    return false;
 }
 
-void TcpConnection::doWrite() {
+bool TcpConnection::doWrite() {
     m_isWritting = true;
     auto self = shared_from_this();
     boost::system::error_code error;
     auto bytesTransferred = m_socket.write_some(m_writeBuffer.data(), error);
       if (error) {
         std::cerr << "TcpConnection::doWrite() error: " + error.message() + ".\n";
-        return;
+        return false;
       }
       m_writeBuffer.consume(bytesTransferred);
       if (m_writeBuffer.size() == 0) {
         m_isWritting = false;
-        return;
+        return true;
       }
-      doWrite();
+      return doWrite();
   }
 
 void TcpConnection::close(){
