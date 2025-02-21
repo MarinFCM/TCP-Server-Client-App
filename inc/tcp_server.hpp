@@ -14,6 +14,10 @@ class TcpServer : TcpObject{
         void onClose(int connId) override;
         void onStart(int connId) override;
 
+        int getClientCount() const;
+        std::string getClientName(int connId) const;
+        std::vector<std::string> getClientTopics(int connId) const;
+
         void start();
         void handleCommand(const std::string& input, int connId);
     private:

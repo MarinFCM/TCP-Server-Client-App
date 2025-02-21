@@ -36,6 +36,24 @@ void TcpServer::accept(){
     });
 }
 
+int TcpServer::getClientCount() const{
+    return m_clientNames.size();
+}
+
+std::string TcpServer::getClientName(int connId) const{
+    if(m_clientNames.find(connId) != m_clientNames.end()){
+        return m_clientNames.at(connId);
+    }
+    return "";
+}
+
+std::vector<std::string> TcpServer::getClientTopics(int connId) const{
+    if(m_clientTopics.find(connId) != m_clientTopics.end()){
+        return m_clientTopics.at(connId);
+    }
+    return std::vector<std::string>();
+}
+
 void TcpServer::handleCommand(const std::string& input, int connId){
     std::istringstream stream(input);
     std::string command;

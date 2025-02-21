@@ -7,7 +7,7 @@ class TcpClient : TcpObject{
         void onRead(int connId, std::string payload) override;
         void onClose(int connId) override;
         void onStart(int connId) override;
-
+        bool isConnected() const;
         void handleCommand(const std::string& input, int connId = 0);
 
         TcpClient(boost::asio::io_context &ioContext);

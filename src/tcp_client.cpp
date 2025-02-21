@@ -102,6 +102,10 @@ void TcpClient::onRead(int connId, std::string payload) {
     std::cout << "[Message] Topic: " << topic << " Data: " << data << std::endl;
 }
 
+bool TcpClient::isConnected() const {
+    return m_isConnected;
+}
+
 void TcpClient::handleCommand(const std::string& input, int connid) {
     std::istringstream stream(input);
     std::string command;
@@ -197,6 +201,7 @@ void TcpClient::onStart(int connId){
 
 void signal_handler(int s){
     std::cout << std::endl << "Caught SIGINT signal" << std::endl;
+    exit_flag = true;
     exit(1); 
 }
 
