@@ -52,14 +52,15 @@ docker run -it --rm tcp_app build/test/TCP-Server-Client-Test
 ## Directory Structure
 
 ```
+├── inc
+│   ├── command_handler.hpp
+│   ├── tcp_client.hpp
+│   ├── tcp_connection.hpp
+│   ├── tcp_server.hpp
 ├── src
 │   ├── tcp_client.cpp
 │   ├── tcp_connection.cpp
 │   ├── tcp_server.cpp
-├── inc
-│   ├── tcp_client.hpp
-│   ├── tcp_connection.hpp
-│   ├── tcp_server.hpp
 ├── test
 │   ├── CMakeLists.txt
 │   ├── tests.cpp
