@@ -10,7 +10,7 @@ TcpServer::TcpServer(int port, boost::asio::io_context& io_context) :
 void TcpServer::start(){
     try {
         std::cout << "Starting server on port " << m_serverPort << std::endl;
-        m_acceptor.listen(5);
+        m_acceptor.listen(Constants::max_clients);
     } catch (const std::exception &e) {
         std::cerr << "TcpServer::start() exception: " +
                          static_cast<std::string>(e.what()) + ".\n";
@@ -57,7 +57,7 @@ std::vector<std::string> TcpServer::getClientTopics(int connId) const{
 void TcpServer::handleCommand(const std::string& input, int connId){
     std::istringstream stream(input);
     std::string command;
-    if (!std::getline(stream, command, ';')) {
+    if (!std::getline(stream, command, Constants::delimiter.c_str()[0])) {
         return;
     }
 
@@ -101,7 +101,7 @@ void TcpServer::handleDisconnect(int connId){
 void TcpServer::handlePublish(std::istringstream& stream, int connId){
     (void)connId;
     std::string topic, data;
-    if (!std::getline(stream, topic, ';')) {
+    if (!std::getline(stream, topic, Constants::delimiter.c_str()[0])) {
         return;
     }
 
@@ -117,7 +117,7 @@ void TcpServer::handlePublish(std::istringstream& stream, int connId){
             }
         }
         for(auto it : topicSubscribers){
-            std::string sendData(topic+";"+data);
+            std::string sendData(topic + Constants::delimiter + data);
             m_clientConnections[it]->send(sendData.c_str(), sendData.size());
         }
     }

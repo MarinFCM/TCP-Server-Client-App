@@ -9,6 +9,12 @@
 
 using boost::asio::ip::tcp;
 
+namespace Constants{
+    std::string const delimiter = ";";
+    int const max_length = 1024;
+    int const max_clients = 32;
+}
+
 class TcpObject : CommandHandler
 {
 public:

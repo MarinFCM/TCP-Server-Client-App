@@ -4,6 +4,8 @@ This repository contains a TCP server-client application implemented using Boost
 The server can handle multiple clients, and clients can connect, disconnect, subscribe/unsubscribe to topics, and publish messages to topics. 
 The repository also includes unit tests using Google Test and Google Mock.
 
+![](doc/arch.png "Architecture")
+
 ## Features
 
 - TCP server that can handle multiple clients
@@ -33,6 +35,14 @@ The repository also includes unit tests using Google Test and Google Mock.
 - CMake (if building locally)
 - Boost (if building locally)
 - Google Test (if building locally)
+
+### Adjusting the constants
+
+There is a Constants namespace in the [tcp_connection.hpp](inc/tcp_connection.hpp) file which contains constants which can be adjusted. The constants are:
+
+- delimiter - character used for TCP message delimitation (default: ";")
+- max_length - maximum length of TCP message (default: 1024)
+- max_clients - maximum number of simultaneous TCP clients connected to one TCP server (default: 32)
 
 ### Building the Docker Image
 

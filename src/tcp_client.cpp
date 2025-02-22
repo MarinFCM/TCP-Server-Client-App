@@ -12,9 +12,14 @@ std::mutex inputMutex;
 std::atomic<bool> exit_flag(false);
 std::queue<std::string> inputQueue;
 
+inline void printMessage(const std::string& message) {
+    std::lock_guard<std::mutex> lock(outputMutex);
+    std::cout << message << std::endl;
+}
+
 TcpClient::TcpClient(boost::asio::io_context &ioContext) : 
         m_ioContext(ioContext), 
-        m_connection{}, 
+        m_connection{},
         m_isConnected{false} {}
 
 void TcpClient::connect(const int& port, const std::string& name) {
@@ -33,30 +38,30 @@ void TcpClient::connect(const int& port, const std::string& name) {
         onStart(0);
         m_serverPort = port;
         m_clientName = name;
-        std::string connectString = "CONNECT;" + name;
+        std::string connectString = "CONNECT" + Constants::delimiter + name;
         m_connection->send(connectString.c_str(), connectString.size());
     } else {
-        std::cout << "Already connected to " << m_serverPort << std::endl;
+        printMessage("Already connected to " + std::to_string(m_serverPort));
     }
 }
 
 void TcpClient::disconnect() {
     if (m_isConnected) {
-        std::string connectString = "DISCONNECT;";
+        std::string connectString = "DISCONNECT" + Constants::delimiter;
         m_connection->send(connectString.c_str(), connectString.size());
     } else {
-        std::cout << "Not connected to any server." << std::endl;
+        printMessage("Not connected to any server.");
     }
 }
 
 void TcpClient::publish(const std::string& topic, const std::string& data) {
     if (m_isConnected) {
-        std::string connectString = "PUBLISH;" + topic + ";" + data;
+        std::string connectString = "PUBLISH" + Constants::delimiter + topic + Constants::delimiter + data;
         if(m_connection->send(connectString.c_str(), connectString.size())){
             std::cout << "Published to topic: " << topic << " Data: " << data << std::endl;
         }
     } else {
-        std::cout << "You must be connected to publish." << std::endl;
+        printMessage("You must be connected to publish.");
     }
 }
 
@@ -64,17 +69,17 @@ void TcpClient::subscribe(const std::string& topic) {
     if (m_isConnected) {
         auto it = std::find(m_topics.begin(), m_topics.end(), topic);
         if(it == m_topics.end()){
-            std::string connectString = "SUBSCRIBE;" + topic;
+            std::string connectString = "SUBSCRIBE" + Constants::delimiter + topic;
             if(m_connection->send(connectString.c_str(), connectString.size())){
-                std::cout << "Subscribed to topic: " << topic << std::endl;
+                printMessage("Subscribed to topic: " + topic);
                 m_topics.push_back(topic);
             }
         }
         else{
-            std::cout << "Already subscribed to topic: " << topic << std::endl;
+            printMessage("Already subscribed to topic: " + topic);
         }
     } else {
-        std::cout << "You must be connected to subscribe." << std::endl;
+        printMessage("You must be connected to subscribe.");
     }
 }
 
@@ -82,16 +87,16 @@ void TcpClient::unsubscribe(const std::string& topic) {
     if (m_isConnected) {
         auto it = std::find(m_topics.begin(), m_topics.end(), topic);
         if (it != m_topics.end()) {
-            std::string connectString = "UNSUBSCRIBE;" + topic;
+            std::string connectString = "UNSUBSCRIBE" + Constants::delimiter + topic;
             if(m_connection->send(connectString.c_str(), connectString.size())){
                 m_topics.erase(it);
-                std::cout << "Unsubscribed from topic: " << topic << std::endl;
+                printMessage("Unsubscribed from topic: " + topic);
             }
         } else {
-            std::cout << "Not subscribed to topic: " << topic << std::endl;
+            printMessage("Not subscribed to topic: " + topic);
         }
     } else {
-        std::cout << "You must be connected to unsubscribe." << std::endl;
+        printMessage("You must be connected to unsubscribe.");
     }
 }
 
@@ -114,6 +119,11 @@ bool TcpClient::isConnected() const {
 
 void TcpClient::handleCommand(const std::string& input, int connId) {
     (void)connId;
+    
+    if(input.length() >= Constants::max_length){
+        printMessage("Command length exceeds maximum message length of " + std::to_string(Constants::max_length));
+        return;
+    }
     std::istringstream stream(input);
     std::string command;
     stream >> command;
@@ -134,7 +144,7 @@ void TcpClient::handleCommand(const std::string& input, int connId) {
         handleUnsubscribe(stream);
     }
     else {
-        std::cout << "Invalid command: " << input << std::endl;
+        printMessage("Invalid command: " + input);
     }
 }
 
@@ -144,14 +154,14 @@ void TcpClient::handleConnect(std::istringstream& stream, int connId) {
     stream >> portStr >> name;
 
     if (portStr.empty() || name.empty()) {
-        std::cout << "Error: CONNECT command requires <port> (int) and <name> parameters.\n";
+        printMessage("Error: CONNECT command requires <port> (int) and <name> parameters.");
         return;
     }
 
     int port = strtol(portStr.c_str(), nullptr, 10);
 
     if (port < 1 || port > 65535) {
-        std::cout << "Error: Port must be an integer between 1 and 65535.\n";
+        printMessage("Error: Port must be an integer between 1 and 65535.");
         return;
     }
 
@@ -167,11 +177,15 @@ void TcpClient::handlePublish(std::istringstream& stream, int connId) {
     (void)connId;
     std::string topic, data;
     stream >> topic;
+    if(topic.find(Constants::delimiter) != std::string::npos){
+        printMessage("Topic contains delimiter character " + Constants::delimiter + " which could lead to unwanted behaviour.");
+        return;
+    }
     std::getline(stream, data);
     data.erase(0, 1);
     
     if (topic.empty() || data.empty()) {
-        std::cout << "Error: PUBLISH command requires <topic> and <data> parameters.\n";
+        printMessage("Error: PUBLISH command requires <topic> and <data> parameters.");
     } else {
         publish(topic, data);
     }
@@ -182,8 +196,12 @@ void TcpClient::handleSubscribe(std::istringstream& stream, int connId) {
     std::string topic;
     stream >> topic;
     if (topic.empty()) {
-        std::cout << "Error: SUBSCRIBE command requires <topic> parameter.\n";
+        printMessage("Error: SUBSCRIBE command requires <topic> parameter.");
     } else {
+        if(topic.find(Constants::delimiter) != std::string::npos){
+            printMessage("Topic contains delimiter character " + Constants::delimiter + " which could lead to unwanted behaviour.");
+            return;
+        }
         subscribe(topic);
     }
 }
@@ -193,7 +211,7 @@ void TcpClient::handleUnsubscribe(std::istringstream& stream, int connId) {
     std::string topic;
     stream >> topic;
     if (topic.empty()) {
-        std::cout << "Error: UNSUBSCRIBE command requires <topic> parameter.\n";
+        printMessage("Error: UNSUBSCRIBE command requires <topic> parameter.");
     } else {
         unsubscribe(topic);
     }
@@ -203,19 +221,17 @@ void TcpClient::onClose(int connId){
     (void)connId;
     m_isConnected = false;
     m_topics.clear();
-    std::lock_guard<std::mutex> lock(outputMutex);
-    std::cout << "Connection to server closed" << std::endl;
+    printMessage("Connection to server closed");
 }
 
 void TcpClient::onStart(int connId){
     (void)connId;
-    std::lock_guard<std::mutex> lock(outputMutex);
-    std::cout << "Connection to server started" << std::endl;
+    printMessage("Connection to server started");
 }
 
 void signal_handler(int s){
     (void)s;
-    std::cout << std::endl << "Caught SIGINT signal" << std::endl;
+    printMessage("Caught SIGINT signal");
     exit_flag = true;
     exit(1); 
 }
@@ -268,6 +284,7 @@ int main() {
             }
         }
 
+        // Prevent 100% CPU usage and allow other threads to run without buffer interrupts
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     work.reset();

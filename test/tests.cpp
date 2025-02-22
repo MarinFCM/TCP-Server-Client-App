@@ -177,6 +177,55 @@ TEST(TcpServerClientTest, TwoClientsSubscribePublish) {
     thread.join();
 }
 
+TEST(TcpServerClientTest, MaxNoOfClients) {
+    boost::asio::io_context io_context;
+    TcpServer server(12345, io_context);
+    server.start();
+    std::thread thread{[&io_context]() { io_context.run(); }};
+    std::vector<std::unique_ptr<StrictMock<MockTcpClient>>> clients;
+    
+    for (int i = 0; i < Constants::max_clients; ++i) {
+        clients.push_back(std::make_unique<StrictMock<MockTcpClient>>(io_context));
+    }
+
+    for (int i = 0; i < Constants::max_clients; ++i) {
+        std::string command = "CONNECT 12345 client" + std::to_string(i + 1);
+        clients[i]->handleCommand(command);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ASSERT_TRUE(clients[i]->isConnected());
+        ASSERT_EQ(server.getClientCount(), i + 1);
+        ASSERT_EQ(server.getClientName(i), "client" + std::to_string(i + 1));
+    }
+
+    for (int i = 0; i < Constants::max_clients; ++i) {
+        std::string command = "SUBSCRIBE test";
+        clients[i]->handleCommand(command);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    for (int i = 0; i < Constants::max_clients; ++i) {
+        EXPECT_CALL(*clients[i], onRead(0, "test;test")).Times(1);
+    }
+
+    // One client send a message to a topic everyone is subscribed to
+    std::string command = "PUBLISH test test";
+    clients[0]->handleCommand(command);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    for (int i = 0; i < Constants::max_clients; ++i) {
+        std::string command = "DISCONNECT";
+        clients[i]->handleCommand(command);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ASSERT_FALSE(clients[i]->isConnected());
+        ASSERT_EQ(server.getClientCount(), Constants::max_clients - 1 - i);
+        ASSERT_EQ(server.getClientName(i), "");
+    }
+
+    io_context.stop();
+    thread.join();
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

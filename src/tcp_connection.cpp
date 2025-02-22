@@ -4,7 +4,7 @@ TcpConnection::TcpConnection(tcp::socket &&socket, TcpObject &object, int connId
 m_writeBufferMutex{}, m_connectionId(connId), m_isWritting{false} {}
 
 void TcpConnection::read(){
-    auto buffers = m_readBuffer.prepare(512);
+    auto buffers = m_readBuffer.prepare(Constants::max_length);
     auto self = shared_from_this();
     m_socket.async_read_some(buffers, [this, self](const auto &error,
                                                     auto bytesTransferred) {
