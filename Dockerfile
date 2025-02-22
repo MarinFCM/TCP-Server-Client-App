@@ -1,6 +1,6 @@
 FROM alpine:3.19 AS build
 
-# Install dependencies (build-essential, cmake, pthreads, etc.)
+# Install the necessary packages
 RUN apk --update add --no-cache \
   build-base \
   cmake \
@@ -15,4 +15,5 @@ COPY src/ /app/src/
 COPY test/ /app/test/
 COPY CMakeLists.txt /app/
 
+# Build the project
 RUN cmake -S . -B build && cmake --build build

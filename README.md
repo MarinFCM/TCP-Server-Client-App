@@ -58,13 +58,15 @@ To run the server and client using Docker, use the following commands:
 
 ```sh
 # Run the server on port 1999
-# The option "--network host" run the container on the host network. It is needed because running two (or more) "docker run" 
-# commands runs seperate docker instances which cannot communicate without exposing ports between them
+# The option "--network host" runs the container on the host network. It is needed because running two (or more) "docker run" 
+# commands runs seperate docker instances which cannot communicate without exposing ports between them through the host
 docker run -it --network host --rm tcp_app build/tcp_server 1999
 
 # Run the client
 docker run -it --network host --rm tcp_app build/tcp_client
 ```
+
+To exit the application press CTRL+C (server or client) or type "exit" (client).
 
 ### Running the Tests
 
