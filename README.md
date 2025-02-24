@@ -118,13 +118,12 @@ If you prefer to build and run the application locally without Docker, follow th
 2. Run CMake to configure the project:
 
     ```sh
-    cmake ..
+    cmake -S . -B build
     ```
 
 3. Build the project:
 
     ```sh
-    cmake -S . -B build
     cmake --build build
     ```
 
